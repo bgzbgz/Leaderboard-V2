@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
@@ -106,7 +106,7 @@ function transformSupabaseToClient(data: SupabaseTeamData): Client {
   };
 }
 
-export default function ClientDashboard() {
+function ClientDashboard() {
   const [currentClient, setCurrentClient] = useState<Client | null>(null);
   const [allClients, setAllClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -501,5 +501,18 @@ export default function ClientDashboard() {
       />
       </div>
     </div>
+  );
+}
+
+export default function ClientPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="text-white text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+        <p className="font-heading text-xl">Loading...</p>
+      </div>
+    </div>}>
+      <ClientDashboard />
+    </Suspense>
   );
 }

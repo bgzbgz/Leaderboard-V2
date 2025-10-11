@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
@@ -114,7 +114,7 @@ interface NewClientForm {
   programChampion: string;
 }
 
-export default function AssociateDashboard() {
+function AssociateDashboard() {
   const [associate, setAssociate] = useState<Associate | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -894,5 +894,18 @@ export default function AssociateDashboard() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function AssociatePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="text-white text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+        <p className="font-heading text-xl">Loading...</p>
+      </div>
+    </div>}>
+      <AssociateDashboard />
+    </Suspense>
   );
 }

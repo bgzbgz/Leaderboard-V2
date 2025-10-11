@@ -115,7 +115,7 @@ export default function ClientDetailModal({ client, isOpen, onClose }: ClientDet
               GRADUATION DATE
             </div>
             <div className="text-2xl font-heading text-black">
-              {formatDate(client.graduationDate)}
+              {client.graduationDate ? formatDate(client.graduationDate) : 'Not set'}
             </div>
           </div>
 
