@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 
 export default function LoginPage() {
@@ -62,9 +63,11 @@ export default function LoginPage() {
         {/* Fast Track Logo */}
         <div className="text-center mb-12">
           <div className="flex justify-center mb-4">
-            <img 
+            <Image 
               src="/logo.png" 
               alt="Fast Track Leaderboard" 
+              width={96}
+              height={96}
               className="h-24 w-auto"
             />
           </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { Client } from '@/types';
 import ExecutiveSummary from '@/components/client/ExecutiveSummary';
@@ -40,7 +41,7 @@ function getStatusColor(status: string): string {
 }
 
 // Transform Supabase data to Client interface
-function transformSupabaseToClient(data: any): Client {
+function transformSupabaseToClient(data: Record<string, any>): Client {
   return {
     id: data.id,
     name: data.name,
@@ -84,7 +85,7 @@ export default function ClientDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [ssdbInsights, setSsdbInsights] = useState<any>(null);
+  const [ssdbInsights, setSsdbInsights] = useState<Record<string, any> | null>(null);
   
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -98,7 +99,7 @@ export default function ClientDashboard() {
     }
 
     fetchClientData();
-  }, [accessCode, router]);
+  }, [accessCode, router, fetchClientData]);
 
   const fetchClientData = async () => {
     try {
@@ -226,7 +227,7 @@ export default function ClientDashboard() {
             >
               EXIT
             </button>
-            <img src="/logo.png" alt="Fast Track" className="h-8 w-auto ml-4" />
+            <Image src="/logo.png" alt="Fast Track" width={32} height={32} className="h-8 w-auto ml-4" />
           </div>
         </div>
       </header>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { Associate, Client } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -34,7 +35,7 @@ function getStatusColor(status: string): string {
 }
 
 // Transform Supabase data to Client interface
-function transformSupabaseToClient(data: any): Client {
+function transformSupabaseToClient(data: Record<string, any>): Client {
   return {
     id: data.id,
     name: data.name,
@@ -104,7 +105,7 @@ export default function AssociateDashboard() {
     stopInsight: '',
     doBetterInsight: ''
   });
-  const [ssdbInsights, setSsdbInsights] = useState<{[key: string]: any}>({});
+  const [ssdbInsights, setSsdbInsights] = useState<{[key: string]: Record<string, any> | null}>({});
   const [newClientForm, setNewClientForm] = useState<NewClientForm>({
     name: '',
     countryCode: '',
@@ -182,7 +183,7 @@ export default function AssociateDashboard() {
       });
 
       const insightsResults = await Promise.all(insightsPromises);
-      const insightsMap: {[key: string]: any} = {};
+      const insightsMap: {[key: string]: Record<string, any> | null} = {};
       insightsResults.forEach(result => {
         insightsMap[result.clientId] = result.insight;
       });
@@ -196,7 +197,9 @@ export default function AssociateDashboard() {
   };
 
   useEffect(() => {
-    fetchAssociateData();
+    if (accessCode) {
+      fetchAssociateData();
+    }
   }, [accessCode]);
 
   const calculateOnTimePercentage = (completed: number, total: number): number => {
@@ -221,7 +224,7 @@ export default function AssociateDashboard() {
     try {
       const newAccessCode = `CLIENT${Date.now()}`;
       
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('teams')
         .insert({
           name: newClientForm.name,
@@ -416,7 +419,7 @@ export default function AssociateDashboard() {
             >
               EXIT
             </button>
-            <img src="/logo.png" alt="Fast Track" className="h-8 w-auto ml-4" />
+            <Image src="/logo.png" alt="Fast Track" width={32} height={32} className="h-8 w-auto ml-4" />
           </div>
         </div>
       </header>
