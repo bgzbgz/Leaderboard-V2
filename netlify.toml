@@ -4,15 +4,12 @@
 
 [build.environment]
   NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
 
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-
-# Next.js specific settings
-[build.environment]
-  NEXT_TELEMETRY_DISABLED = "1"
 
 # Headers for security
 [[headers]]
