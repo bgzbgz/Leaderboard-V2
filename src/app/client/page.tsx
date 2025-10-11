@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
-import { Client } from '@/types';
+import { Client, ClientStatus } from '@/types';
 import ExecutiveSummary from '@/components/client/ExecutiveSummary';
 import ClientDetailModal from '@/components/client/ClientDetailModal';
 
@@ -40,8 +40,36 @@ function getStatusColor(status: string): string {
   }
 }
 
+// Interface for Supabase team data
+interface SupabaseTeamData {
+  id: string;
+  name: string;
+  access_code: string;
+  week_number: number;
+  on_time_completed: number;
+  on_time_total: number;
+  quality_scores: number[];
+  status: string;
+  current_sprint_number: number;
+  current_sprint_name: string;
+  sprint_deadline: string;
+  next_sprint_number: number;
+  next_sprint_name: string;
+  next_sprint_release: string;
+  start_date: string;
+  graduation_date: string;
+  days_in_delay: number;
+  program_champion: string;
+  current_guru: string;
+  completed_sprints: number[];
+  rank: number;
+  country_code: string;
+  associate_id: string;
+  previous_rank: number;
+}
+
 // Transform Supabase data to Client interface
-function transformSupabaseToClient(data: Record<string, any>): Client {
+function transformSupabaseToClient(data: SupabaseTeamData): Client {
   return {
     id: data.id,
     name: data.name,
@@ -52,7 +80,7 @@ function transformSupabaseToClient(data: Record<string, any>): Client {
       total: data.on_time_total,
     },
     qualityScores: data.quality_scores || [],
-    status: data.status,
+    status: data.status as ClientStatus,
     currentSprint: {
       number: data.current_sprint_number,
       name: data.current_sprint_name,
@@ -85,23 +113,14 @@ export default function ClientDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [ssdbInsights, setSsdbInsights] = useState<Record<string, any> | null>(null);
+  const [ssdbInsights, setSsdbInsights] = useState<{start_insight: string; stop_insight: string; do_better_insight: string} | null>(null);
   
   const searchParams = useSearchParams();
   const router = useRouter();
   
   const accessCode = searchParams.get('code');
 
-  useEffect(() => {
-    if (!accessCode) {
-      router.push('/');
-      return;
-    }
-
-    fetchClientData();
-  }, [accessCode, router, fetchClientData]);
-
-  const fetchClientData = async () => {
+  const fetchClientData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -160,7 +179,16 @@ export default function ClientDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessCode]);
+
+  useEffect(() => {
+    if (!accessCode) {
+      router.push('/');
+      return;
+    }
+
+    fetchClientData();
+  }, [accessCode, router, fetchClientData]);
 
   const calculateOnTimePercentage = (completed: number, total: number): number => {
     if (total === 0) return 0;

@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
-import { Associate, Client } from '@/types';
+import { Associate, Client, ClientStatus } from '@/types';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -34,8 +34,36 @@ function getStatusColor(status: string): string {
   }
 }
 
+// Interface for Supabase team data
+interface SupabaseTeamData {
+  id: string;
+  name: string;
+  access_code: string;
+  week_number: number;
+  on_time_completed: number;
+  on_time_total: number;
+  quality_scores: number[];
+  status: string;
+  current_sprint_number: number;
+  current_sprint_name: string;
+  sprint_deadline: string;
+  next_sprint_number: number;
+  next_sprint_name: string;
+  next_sprint_release: string;
+  start_date: string;
+  graduation_date: string;
+  days_in_delay: number;
+  program_champion: string;
+  current_guru: string;
+  completed_sprints: number[];
+  rank: number;
+  country_code: string;
+  associate_id: string;
+  previous_rank: number;
+}
+
 // Transform Supabase data to Client interface
-function transformSupabaseToClient(data: Record<string, any>): Client {
+function transformSupabaseToClient(data: SupabaseTeamData): Client {
   return {
     id: data.id,
     name: data.name,
@@ -46,7 +74,7 @@ function transformSupabaseToClient(data: Record<string, any>): Client {
       total: data.on_time_total,
     },
     qualityScores: data.quality_scores || [],
-    status: data.status,
+    status: data.status as ClientStatus,
     currentSprint: {
       number: data.current_sprint_number,
       name: data.current_sprint_name,
@@ -105,7 +133,7 @@ export default function AssociateDashboard() {
     stopInsight: '',
     doBetterInsight: ''
   });
-  const [ssdbInsights, setSsdbInsights] = useState<{[key: string]: Record<string, any> | null}>({});
+  const [ssdbInsights, setSsdbInsights] = useState<{[key: string]: {start_insight: string; stop_insight: string; do_better_insight: string} | null}>({});
   const [newClientForm, setNewClientForm] = useState<NewClientForm>({
     name: '',
     countryCode: '',
@@ -117,7 +145,7 @@ export default function AssociateDashboard() {
   const router = useRouter();
   const accessCode = searchParams.get('code');
 
-  const fetchAssociateData = async () => {
+  const fetchAssociateData = useCallback(async () => {
     if (!accessCode) {
       setError('Access code is missing.');
       setLoading(false);
@@ -183,7 +211,7 @@ export default function AssociateDashboard() {
       });
 
       const insightsResults = await Promise.all(insightsPromises);
-      const insightsMap: {[key: string]: Record<string, any> | null} = {};
+      const insightsMap: {[key: string]: {start_insight: string; stop_insight: string; do_better_insight: string} | null} = {};
       insightsResults.forEach(result => {
         insightsMap[result.clientId] = result.insight;
       });
@@ -194,13 +222,13 @@ export default function AssociateDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessCode, router]);
 
   useEffect(() => {
     if (accessCode) {
       fetchAssociateData();
     }
-  }, [accessCode]);
+  }, [accessCode, fetchAssociateData]);
 
   const calculateOnTimePercentage = (completed: number, total: number): number => {
     if (total === 0) return 0;
@@ -450,8 +478,6 @@ export default function AssociateDashboard() {
                 client.onTimeDelivery.completed,
                 client.onTimeDelivery.total
               );
-              const qualityAverage = calculateQualityAverage(client.qualityScores);
-              
               return (
                 <div key={client.id} className="bg-white text-black p-6 rounded-lg shadow-lg">
                   <div className="flex justify-between items-start mb-4">
