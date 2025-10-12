@@ -32,8 +32,18 @@ export default function LoginPage() {
         .single();
 
       if (teamData && !teamError) {
-        router.push(`/client?code=${accessCode}`);
-        return;
+        // Validate team data before proceeding
+        try {
+          // Basic validation - check if required fields exist
+          if (teamData.name && teamData.access_code && teamData.status) {
+            router.push(`/client?code=${accessCode}`);
+            return;
+          } else {
+            console.warn('Team data incomplete, checking associates table...');
+          }
+        } catch (validationError) {
+          console.warn('Team data validation failed, checking associates table...', validationError);
+        }
       }
 
       // Check associates table
@@ -44,8 +54,13 @@ export default function LoginPage() {
         .single();
 
       if (associateData && !associateError) {
-        router.push(`/associate?code=${accessCode}`);
-        return;
+        // Validate associate data before proceeding
+        if (associateData.name && associateData.access_code) {
+          router.push(`/associate?code=${accessCode}`);
+          return;
+        } else {
+          console.warn('Associate data incomplete');
+        }
       }
 
       // If not found in either table
