@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { config } from '@/config/environment';
 import { supabase } from '@/lib/supabase';
 
@@ -79,13 +78,25 @@ export default function LoginPage() {
         {/* Fast Track Logo */}
         <div className="text-center mb-12">
           <div className="flex justify-center mb-4">
-            <Image 
+            <img 
               src="/logo.png" 
               alt="Fast Track Leaderboard" 
               width={96}
               height={96}
               className="h-24 w-auto"
+              onError={(e) => {
+                console.error('Logo failed to load:', e);
+                e.currentTarget.style.display = 'none';
+                // Show fallback text logo
+                const fallback = document.getElementById('fallback-logo');
+                if (fallback) fallback.style.display = 'block';
+              }}
             />
+            <div id="fallback-logo" className="hidden">
+              <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full w-24 h-24 flex items-center justify-center text-2xl font-bold">
+                FT
+              </div>
+            </div>
           </div>
         </div>
 
