@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { config } from '@/config/environment';
 import { supabase } from '@/lib/supabase';
 
 export default function LoginPage() {
@@ -18,7 +19,7 @@ export default function LoginPage() {
 
     try {
       // Check for admin access codes first
-      if (accessCode === 'ADMIN001' || accessCode === 'FASTTRACK_ADMIN') {
+      if (config.admin.accessCodes.includes(accessCode) || accessCode === 'FASTTRACK_ADMIN') {
         router.push('/admin');
         return;
       }

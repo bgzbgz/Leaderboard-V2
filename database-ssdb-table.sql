@@ -56,8 +56,8 @@ INSERT INTO public.ssdb_insights (team_id, start_insight, stop_insight, do_bette
  'Improve client communication with weekly progress reports',
  (SELECT id FROM public.associates WHERE access_code = 'VASIL001' LIMIT 1)),
 
--- Sample insights for TechFlow (team_id from teams table)
-((SELECT id FROM public.teams WHERE access_code = 'TECHFLOW2025' LIMIT 1), 
+-- Sample insights for CRAFT (team_id from teams table)
+((SELECT id FROM public.teams WHERE access_code = 'CRAFT2025' LIMIT 1), 
  'Begin implementing automated testing for better code quality', 
  'Stop deploying code without proper testing procedures', 
  'Better code review process with mandatory peer reviews',

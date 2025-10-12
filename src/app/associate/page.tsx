@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
@@ -12,6 +12,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useErrorHandler } from '@/utils/errorHandler';
+import { isValidSupabaseTeamData, isValidSSDBInsights } from '@/utils/typeGuards';
+import { useLoading } from '@/hooks/useLoading';
+import { useStableCallback } from '@/hooks/usePerformance';
+import { LoadingPage } from '@/components/ui/loading';
+import { formatDisplayDate } from '@/utils/dateUtils';
+import { ErrorDisplay } from '@/components/ui/error-display';
 
 // Helper function to get full country name
 function getCountryName(countryCode: string): string {
@@ -62,8 +69,13 @@ interface SupabaseTeamData {
   previous_rank: number;
 }
 
-// Transform Supabase data to Client interface
+// Transform Supabase data to Client interface with validation
 function transformSupabaseToClient(data: SupabaseTeamData): Client {
+  // Validate the data before transformation
+  if (!isValidSupabaseTeamData(data)) {
+    throw new Error('Invalid team data received from database')
+  }
+
   return {
     id: data.id,
     name: data.name,
@@ -117,8 +129,6 @@ interface NewClientForm {
 function AssociateDashboard() {
   const [associate, setAssociate] = useState<Associate | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [activityLog, setActivityLog] = useState<ActivityLog[]>([]);
   
   // Modal states
@@ -143,17 +153,18 @@ function AssociateDashboard() {
 
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { handleError } = useErrorHandler();
+  const { loading, error, setError, withLoading } = useLoading();
   const accessCode = searchParams.get('code');
 
-  const fetchAssociateData = useCallback(async () => {
+  const fetchAssociateData = useStableCallback(async () => {
     if (!accessCode) {
       setError('Access code is missing.');
-      setLoading(false);
       router.push('/');
       return;
     }
 
-    try {
+    await withLoading(async () => {
       // Fetch associate
       const { data: associateData, error: associateError } = await supabase
         .from('associates')
@@ -161,10 +172,17 @@ function AssociateDashboard() {
         .eq('access_code', accessCode)
         .single();
 
-      if (associateError || !associateData) {
-        setError('Associate not found or invalid access code.');
-        setLoading(false);
-        return;
+      if (associateError) {
+        const appError = handleError(associateError, {
+          component: 'AssociateDashboard',
+          action: 'fetchAssociate',
+          additionalData: { accessCode }
+        });
+        throw new Error(appError.message);
+      }
+
+      if (!associateData) {
+        throw new Error('Associate not found or invalid access code.');
       }
       setAssociate(associateData);
 
@@ -176,38 +194,61 @@ function AssociateDashboard() {
         .order('rank', { ascending: true });
 
       if (clientsError) {
-        setError('Failed to fetch clients data.');
-        setLoading(false);
-        return;
+        const appError = handleError(clientsError, {
+          component: 'AssociateDashboard',
+          action: 'fetchClients'
+        });
+        throw new Error(appError.message);
       }
 
-      setClients(clientsData.map(transformSupabaseToClient));
+      // Transform clients data with validation
+      let transformedClients: Client[];
+      try {
+        transformedClients = clientsData.map(transformSupabaseToClient);
+      } catch (transformError) {
+        const appError = handleError(transformError, {
+          component: 'AssociateDashboard',
+          action: 'transformClientsData'
+        });
+        throw new Error(appError.message);
+      }
+
+      setClients(transformedClients);
 
       // Fetch activity log
-      const { data: activityData } = await supabase
+      const { data: activityData, error: activityError } = await supabase
         .from('activity_log')
         .select('*')
         .eq('associate_id', associateData.id)
         .order('timestamp', { ascending: false })
         .limit(10);
 
-      setActivityLog(activityData || []);
+      if (activityError) {
+        console.warn('Failed to fetch activity log:', activityError);
+        setActivityLog([]);
+      } else {
+        setActivityLog(activityData || []);
+      }
 
       // Fetch SSDB insights for all clients
-      const transformedClients = clientsData.map(transformSupabaseToClient);
       const insightsPromises = transformedClients.map(async (client) => {
-        const { data: insightData, error: insightError } = await supabase
-          .from('ssdb_insights')
-          .select('*')
-          .eq('team_id', client.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
+        try {
+          const { data: insightData, error: insightError } = await supabase
+            .from('ssdb_insights')
+            .select('*')
+            .eq('team_id', client.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
 
-        if (!insightError && insightData) {
-          return { clientId: client.id, insight: insightData };
+          if (!insightError && insightData && isValidSSDBInsights(insightData)) {
+            return { clientId: client.id, insight: insightData };
+          }
+          return { clientId: client.id, insight: null };
+        } catch (insightErr) {
+          console.warn(`Failed to fetch insights for client ${client.id}:`, insightErr);
+          return { clientId: client.id, insight: null };
         }
-        return { clientId: client.id, insight: null };
       });
 
       const insightsResults = await Promise.all(insightsPromises);
@@ -216,13 +257,8 @@ function AssociateDashboard() {
         insightsMap[result.clientId] = result.insight;
       });
       setSsdbInsights(insightsMap);
-    } catch (err) {
-      console.error('Error fetching associate data:', err);
-      setError('An unexpected error occurred.');
-    } finally {
-      setLoading(false);
-    }
-  }, [accessCode, router]);
+    });
+  });
 
   useEffect(() => {
     if (accessCode) {
@@ -250,16 +286,34 @@ function AssociateDashboard() {
 
   const handleCreateNewClient = async () => {
     try {
+      // Validate form data
+      if (!newClientForm.name.trim()) {
+        alert('Client name is required');
+        return;
+      }
+      if (!newClientForm.countryCode.trim()) {
+        alert('Country code is required');
+        return;
+      }
+      if (!newClientForm.programChampion.trim()) {
+        alert('Program champion is required');
+        return;
+      }
+      if (!associate?.id) {
+        alert('Associate information not found');
+        return;
+      }
+
       const newAccessCode = `CLIENT${Date.now()}`;
       
-      const { error } = await supabase
+      const { error: clientError } = await supabase
         .from('teams')
         .insert({
-          name: newClientForm.name,
+          name: newClientForm.name.trim(),
           access_code: newAccessCode,
-          country_code: newClientForm.countryCode,
-          program_champion: newClientForm.programChampion,
-          current_guru: associate?.name,
+          country_code: newClientForm.countryCode.trim().toUpperCase(),
+          program_champion: newClientForm.programChampion.trim(),
+          current_guru: associate.name,
           status: 'STARTING_SOON',
           week_number: 1,
           on_time_completed: 0,
@@ -272,21 +326,36 @@ function AssociateDashboard() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (clientError) {
+        console.error('Client creation error:', clientError);
+        alert(`Failed to create client: ${clientError.message}`);
+        return;
+      }
 
       // Log activity
-      await supabase.from('activity_log').insert({
-        associate_id: associate?.id,
-        client_name: newClientForm.name,
+      const { error: logError } = await supabase.from('activity_log').insert({
+        associate_id: associate.id,
+        client_name: newClientForm.name.trim(),
         action: 'Client created',
         timestamp: new Date().toISOString(),
       });
 
+      if (logError) {
+        console.error('Activity log error:', logError);
+        // Don't fail the entire operation for logging errors
+      }
+
+      // Reset form and close modal
       setNewClientForm({ name: '', countryCode: '', ceoName: '', programChampion: '' });
       setNewClientModalOpen(false);
+      
+      // Refresh data
       await fetchAssociateData();
+      
+      alert(`Client "${newClientForm.name}" created successfully with access code: ${newAccessCode}`);
     } catch (err) {
       console.error('Error creating client:', err);
+      alert('An unexpected error occurred while creating the client. Please try again.');
     }
   };
 
@@ -365,8 +434,7 @@ function AssociateDashboard() {
       return;
     }
 
-    setLoading(true);
-    try {
+    await withLoading(async () => {
       const { error } = await supabase
         .from('ssdb_insights')
         .insert({
@@ -391,33 +459,34 @@ function AssociateDashboard() {
       setSsdbModalOpen(false);
       setSsdbForm({ startInsight: '', stopInsight: '', doBetterInsight: '' });
       fetchAssociateData(); // Refresh to get updated insights
-    } catch (err) {
-      console.error('Error saving SSDB insights:', err);
-      alert('Failed to save insights. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white text-xl font-body">Loading...</div>
-      </div>
-    );
+    return <LoadingPage isLoading={true} message="Loading associate dashboard..." className="bg-black text-white"><div /></LoadingPage>;
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-500 text-xl mb-4 font-body">{error}</div>
-          <button 
-            onClick={() => router.push('/')}
-            className="bg-white text-black px-6 py-2 rounded hover:bg-gray-200 font-heading"
-          >
-            Back to Login
-          </button>
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+        <div className="max-w-md w-full">
+          <div className="text-center">
+            <div className="text-red-500 text-6xl mb-4">⚠️</div>
+            <h1 className="text-2xl font-bold text-white mb-4 font-heading">
+              Something went wrong
+            </h1>
+            <ErrorDisplay
+              error={error}
+              onRetry={() => fetchAssociateData()}
+              className="mb-6 bg-red-900 border-red-700"
+            />
+            <button 
+              onClick={() => router.push('/')}
+              className="bg-white text-black px-6 py-2 rounded hover:bg-gray-200 font-heading"
+            >
+              Back to Login
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -641,7 +710,7 @@ function AssociateDashboard() {
                         <div className="font-body text-sm text-gray-600">{activity.action}</div>
                       </div>
                       <div className="font-body text-sm text-gray-500">
-                        {new Date(activity.timestamp).toLocaleString()}
+                        {formatDisplayDate(activity.timestamp)}
                       </div>
                     </div>
                   ))}

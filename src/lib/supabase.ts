@@ -1,14 +1,32 @@
 import { createClient } from '@supabase/supabase-js'
+import { config, validateEnvironment } from '@/config/environment'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://mfddgywmqdkunzafshpc.supabase.co'
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mZGRneXdtcWRrdW56YWZzaHBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxNjY4ODgsImV4cCI6MjA3NTc0Mjg4OH0.HoU9cdZP6PCv1pgbDEEI1mqBlhIUXBgZyMBfrCVDT1w'
-
-if (!supabaseUrl) {
-  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable')
+// Validate environment variables
+const { isValid, missing } = validateEnvironment()
+if (!isValid) {
+  console.warn('Missing environment variables:', missing.join(', '))
+  console.warn('Using fallback values for development')
 }
 
-if (!supabaseAnonKey) {
-  throw new Error('Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable')
-}
+export const supabase = createClient(config.supabase.url, config.supabase.anonKey)
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Connection test function for debugging
+export const testSupabaseConnection = async (): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('teams')
+      .select('count')
+      .limit(1)
+    
+    if (error) {
+      console.error('Supabase connection test failed:', error)
+      return false
+    }
+    
+    console.log('Supabase connection test successful')
+    return true
+  } catch (error) {
+    console.error('Supabase connection test error:', error)
+    return false
+  }
+}

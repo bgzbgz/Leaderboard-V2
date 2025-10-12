@@ -1,12 +1,18 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { Client, ClientStatus } from '@/types';
 import ExecutiveSummary from '@/components/client/ExecutiveSummary';
 import ClientDetailModal from '@/components/client/ClientDetailModal';
+import { useErrorHandler } from '@/utils/errorHandler';
+import { isValidSupabaseTeamData, isValidSSDBInsights } from '@/utils/typeGuards';
+import { useLoading } from '@/hooks/useLoading';
+import { useStableCallback } from '@/hooks/usePerformance';
+import { LoadingPage } from '@/components/ui/loading';
+import { ErrorDisplay } from '@/components/ui/error-display';
 
 // Helper function to get full country name
 function getCountryName(countryCode: string): string {
@@ -68,8 +74,13 @@ interface SupabaseTeamData {
   previous_rank: number;
 }
 
-// Transform Supabase data to Client interface
+// Transform Supabase data to Client interface with validation
 function transformSupabaseToClient(data: SupabaseTeamData): Client {
+  // Validate the data before transformation
+  if (!isValidSupabaseTeamData(data)) {
+    throw new Error('Invalid team data received from database')
+  }
+
   return {
     id: data.id,
     name: data.name,
@@ -109,22 +120,24 @@ function transformSupabaseToClient(data: SupabaseTeamData): Client {
 function ClientDashboard() {
   const [currentClient, setCurrentClient] = useState<Client | null>(null);
   const [allClients, setAllClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [ssdbInsights, setSsdbInsights] = useState<{start_insight: string; stop_insight: string; do_better_insight: string} | null>(null);
   
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { handleError } = useErrorHandler();
+  const { loading, error, setError, withLoading } = useLoading();
   
   const accessCode = searchParams.get('code');
 
-  const fetchClientData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const fetchClientData = useStableCallback(async () => {
+    if (!accessCode) {
+      setError('Access code is missing');
+      return;
+    }
 
+    await withLoading(async () => {
       // Fetch current client by access code
       const { data: clientData, error: clientError } = await supabase
         .from('teams')
@@ -132,9 +145,17 @@ function ClientDashboard() {
         .eq('access_code', accessCode)
         .single();
 
-      if (clientError || !clientData) {
-        setError('Client not found. Please check your access code.');
-        return;
+      if (clientError) {
+        const appError = handleError(clientError, {
+          component: 'ClientDashboard',
+          action: 'fetchClientData',
+          additionalData: { accessCode }
+        });
+        throw new Error(appError.message);
+      }
+
+      if (!clientData) {
+        throw new Error('Client not found. Please check your access code.');
       }
 
       // Fetch all clients for leaderboard
@@ -144,13 +165,27 @@ function ClientDashboard() {
         .order('rank', { ascending: true });
 
       if (allClientsError) {
-        setError('Failed to load leaderboard data.');
-        return;
+        const appError = handleError(allClientsError, {
+          component: 'ClientDashboard',
+          action: 'fetchAllClients'
+        });
+        throw new Error(appError.message);
       }
 
-      // Transform data
-      const transformedClient = transformSupabaseToClient(clientData);
-      const transformedAllClients = allClientsData.map(transformSupabaseToClient);
+      // Transform data with validation
+      let transformedClient: Client;
+      let transformedAllClients: Client[];
+
+      try {
+        transformedClient = transformSupabaseToClient(clientData);
+        transformedAllClients = allClientsData.map(transformSupabaseToClient);
+      } catch (transformError) {
+        const appError = handleError(transformError, {
+          component: 'ClientDashboard',
+          action: 'transformData'
+        });
+        throw new Error(appError.message);
+      }
 
       // Set total clients count
       transformedClient.totalClients = transformedAllClients.length;
@@ -171,15 +206,14 @@ function ClientDashboard() {
         .single();
 
       if (!ssdbError && ssdbData) {
-        setSsdbInsights(ssdbData);
+        if (isValidSSDBInsights(ssdbData)) {
+          setSsdbInsights(ssdbData);
+        } else {
+          console.warn('Invalid SSDB insights data received:', ssdbData);
+        }
       }
-    } catch (err) {
-      console.error('Error fetching client data:', err);
-      setError('An error occurred while loading data.');
-    } finally {
-      setLoading(false);
-    }
-  }, [accessCode]);
+    });
+  });
 
   useEffect(() => {
     if (!accessCode) {
@@ -211,24 +245,30 @@ function ClientDashboard() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white text-xl font-body">Loading...</div>
-      </div>
-    );
+    return <LoadingPage isLoading={true} message="Loading your dashboard..." className="bg-black text-white"><div /></LoadingPage>;
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-500 text-xl mb-4 font-body">{error}</div>
-          <button 
-            onClick={() => router.push('/')}
-            className="bg-white text-black px-6 py-2 rounded hover:bg-gray-200 font-heading"
-          >
-            Back to Login
-          </button>
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+        <div className="max-w-md w-full">
+          <div className="text-center">
+            <div className="text-red-500 text-6xl mb-4">⚠️</div>
+            <h1 className="text-2xl font-bold text-white mb-4 font-heading">
+              Something went wrong
+            </h1>
+            <ErrorDisplay
+              error={error}
+              onRetry={() => fetchClientData()}
+              className="mb-6 bg-red-900 border-red-700"
+            />
+            <button 
+              onClick={() => router.push('/')}
+              className="bg-white text-black px-6 py-2 rounded hover:bg-gray-200 font-heading"
+            >
+              Back to Login
+            </button>
+          </div>
         </div>
       </div>
     );

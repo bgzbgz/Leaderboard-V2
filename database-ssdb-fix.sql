@@ -84,7 +84,7 @@ SELECT
     'Better code review process with mandatory peer reviews' as do_better_insight,
     a.id as created_by
 FROM public.teams t, public.associates a 
-WHERE t.access_code = 'TECHFLOW2025' 
+WHERE t.access_code = 'CRAFT2025' 
 AND a.access_code = 'ANI001'
 LIMIT 1;
 
