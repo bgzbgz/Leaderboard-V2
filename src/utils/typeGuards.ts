@@ -125,31 +125,49 @@ export const isValidSupabaseTeamData = (data: unknown): boolean => {
   
   const obj = data as Record<string, unknown>
   
-  return (
+  // Check only the absolutely required fields
+  const hasRequiredFields = (
     typeof obj.id === 'string' &&
     typeof obj.name === 'string' &&
     typeof obj.access_code === 'string' &&
-    typeof obj.week_number === 'number' &&
-    typeof obj.on_time_completed === 'number' &&
-    typeof obj.on_time_total === 'number' &&
-    Array.isArray(obj.quality_scores) &&
-    (obj.quality_scores as unknown[]).every((score: unknown) => typeof score === 'number') &&
-    typeof obj.status === 'string' &&
-    typeof obj.current_sprint_number === 'number' &&
-    typeof obj.current_sprint_name === 'string' &&
-    typeof obj.sprint_deadline === 'string' &&
-    typeof obj.next_sprint_number === 'number' &&
-    typeof obj.next_sprint_name === 'string' &&
-    typeof obj.next_sprint_release === 'string' &&
-    typeof obj.start_date === 'string' &&
-    typeof obj.program_champion === 'string' &&
-    typeof obj.current_guru === 'string' &&
-    Array.isArray(obj.completed_sprints) &&
-    (obj.completed_sprints as unknown[]).every((sprint: unknown) => typeof sprint === 'number') &&
-    typeof obj.rank === 'number' &&
-    typeof obj.country_code === 'string' &&
-    typeof obj.associate_id === 'string'
+    typeof obj.status === 'string'
   )
+  
+  if (!hasRequiredFields) return false
+  
+  // Check numeric fields (with defaults)
+  const hasNumericFields = (
+    (typeof obj.week_number === 'number' || obj.week_number === null) &&
+    (typeof obj.on_time_completed === 'number' || obj.on_time_completed === null) &&
+    (typeof obj.on_time_total === 'number' || obj.on_time_total === null) &&
+    (typeof obj.current_sprint_number === 'number' || obj.current_sprint_number === null) &&
+    (typeof obj.rank === 'number' || obj.rank === null)
+  )
+  
+  if (!hasNumericFields) return false
+  
+  // Check string fields (with defaults)
+  const hasStringFields = (
+    (typeof obj.current_sprint_name === 'string' || obj.current_sprint_name === null) &&
+    (typeof obj.sprint_deadline === 'string' || obj.sprint_deadline === null) &&
+    (typeof obj.next_sprint_name === 'string' || obj.next_sprint_name === null) &&
+    (typeof obj.next_sprint_release === 'string' || obj.next_sprint_release === null) &&
+    (typeof obj.start_date === 'string' || obj.start_date === null) &&
+    (typeof obj.program_champion === 'string' || obj.program_champion === null) &&
+    (typeof obj.current_guru === 'string' || obj.current_guru === null) &&
+    (typeof obj.country_code === 'string' || obj.country_code === null) &&
+    (typeof obj.associate_id === 'string' || obj.associate_id === null)
+  )
+  
+  if (!hasStringFields) return false
+  
+  // Check array fields (with defaults)
+  const hasArrayFields = (
+    (Array.isArray(obj.quality_scores) || obj.quality_scores === null) &&
+    (Array.isArray(obj.completed_sprints) || obj.completed_sprints === null)
+  )
+  
+  return hasArrayFields
 }
 
 /**
