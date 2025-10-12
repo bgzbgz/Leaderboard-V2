@@ -92,6 +92,28 @@ export interface Client {
   associateId: string;
   /** Previous rank in leaderboard */
   previousRank?: number;
+  /** CEO name */
+  ceoName?: string;
+  /** Industry type */
+  industryType?: string;
+  /** Company size */
+  companySize?: string;
+  /** Website URL */
+  website?: string;
+  /** Main contact email */
+  mainContact?: string;
+  /** Priority level */
+  priorityLevel?: string;
+  /** Speed score (0-100) */
+  speedScore?: number;
+  /** Current quality score (0-100) */
+  qualityScore?: number;
+  /** Current module */
+  currentModule?: string;
+  /** Module guru/mentor */
+  moduleGuru?: string;
+  /** Additional notes */
+  notes?: string;
 }
 
 /**

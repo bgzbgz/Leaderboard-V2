@@ -19,6 +19,7 @@ import { useStableCallback } from '@/hooks/usePerformance';
 import { LoadingPage } from '@/components/ui/loading';
 import { formatDisplayDate } from '@/utils/dateUtils';
 import { ErrorDisplay } from '@/components/ui/error-display';
+import EnhancedClientManagementModal from '@/components/associate/EnhancedClientManagementModal';
 
 // Helper function to get full country name
 function getCountryName(countryCode: string): string {
@@ -134,6 +135,7 @@ function AssociateDashboard() {
   // Modal states
   const [newClientModalOpen, setNewClientModalOpen] = useState(false);
   const [manageClientModalOpen, setManageClientModalOpen] = useState(false);
+  const [enhancedManageModalOpen, setEnhancedManageModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   
   // SSDB Insights states
@@ -586,15 +588,26 @@ function AssociateDashboard() {
                     <p className="font-body text-sm">Speed Score: {onTimePercentage}%</p>
                   </div>
                   
-                  <Button
-                    onClick={() => {
-                      setSelectedClient(client);
-                      setManageClientModalOpen(true);
-                    }}
-                    className="w-full bg-black text-white hover:bg-gray-800 font-heading"
-                  >
-                    MANAGE CLIENT
-                  </Button>
+                  <div className="flex space-x-2">
+                    <Button
+                      onClick={() => {
+                        setSelectedClient(client);
+                        setEnhancedManageModalOpen(true);
+                      }}
+                      className="flex-1 bg-blue-600 text-white hover:bg-blue-700 font-heading"
+                    >
+                      ENHANCED MANAGE
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setSelectedClient(client);
+                        setManageClientModalOpen(true);
+                      }}
+                      className="flex-1 bg-black text-white hover:bg-gray-800 font-heading"
+                    >
+                      QUICK MANAGE
+                    </Button>
+                  </div>
                 </div>
               );
             })}
@@ -985,6 +998,24 @@ function AssociateDashboard() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Enhanced Client Management Modal */}
+      <EnhancedClientManagementModal
+        client={selectedClient}
+        isOpen={enhancedManageModalOpen}
+        onClose={() => {
+          setEnhancedManageModalOpen(false);
+          setSelectedClient(null);
+        }}
+        onSave={(updatedClient) => {
+          // Update the client in the local state
+          setClients(prev => 
+            prev.map(c => c.id === updatedClient.id ? { ...c, ...updatedClient } : c)
+          );
+          setEnhancedManageModalOpen(false);
+          setSelectedClient(null);
+        }}
+      />
     </div>
   );
 }
