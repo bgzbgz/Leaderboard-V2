@@ -321,7 +321,17 @@ function AssociateDashboard() {
           quality_scores: [],
           current_sprint_number: 1,
           current_sprint_name: 'Business Model Canvas',
+          sprint_deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 7 days from now
+          next_sprint_number: 2,
+          next_sprint_name: 'Value Proposition Canvas',
+          next_sprint_release: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 14 days from now
           start_date: new Date().toISOString().split('T')[0],
+          graduation_date: null,
+          days_in_delay: 0,
+          completed_sprints: [],
+          rank: 1, // Will be updated by the system
+          associate_id: associate.id,
+          previous_rank: null
         })
         .select()
         .single();
@@ -330,6 +340,19 @@ function AssociateDashboard() {
         console.error('Client creation error:', clientError);
         alert(`Failed to create client: ${clientError.message}`);
         return;
+      }
+
+      // Update the rank for the new client
+      const { error: rankError } = await supabase
+        .from('teams')
+        .update({ 
+          rank: (await supabase.from('teams').select('id', { count: 'exact' })).count || 1
+        })
+        .eq('access_code', newAccessCode);
+
+      if (rankError) {
+        console.warn('Rank update error:', rankError);
+        // Don't fail the entire operation for rank update errors
       }
 
       // Log activity
