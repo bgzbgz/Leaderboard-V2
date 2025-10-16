@@ -6,6 +6,13 @@ interface ExecutiveSummaryProps {
 }
 
 export default function ExecutiveSummary({ client }: ExecutiveSummaryProps) {
+  console.log('📊 EXECUTIVE SUMMARY - Received client data:');
+  console.log('  - Client name:', client?.name);
+  console.log('  - onTimeDelivery.completed:', client?.onTimeDelivery?.completed);
+  console.log('  - onTimeDelivery.total:', client?.onTimeDelivery?.total);
+  console.log('  - qualityScores:', client?.qualityScores);
+  console.log('  - completedSprints:', client?.completedSprints);
+  
   // Calculate metrics
   const onTimePercentage = client.onTimeDelivery.total > 0 
     ? Math.round((client.onTimeDelivery.completed / client.onTimeDelivery.total) * 100)
@@ -14,6 +21,11 @@ export default function ExecutiveSummary({ client }: ExecutiveSummaryProps) {
   const qualityAverage = client.qualityScores.length > 0
     ? Math.round(client.qualityScores.reduce((sum, score) => sum + score, 0) / client.qualityScores.length)
     : 0;
+  
+  console.log('🧮 EXECUTIVE SUMMARY - Calculated metrics:');
+  console.log(`  - On-Time: ${client.onTimeDelivery.completed} of ${client.onTimeDelivery.total} (${onTimePercentage}%)`);
+  console.log(`  - Quality Average: ${qualityAverage}%`);
+  console.log(`  - Quality Scores Array:`, client.qualityScores);
 
   // Calculate quality trend
   const getQualityTrend = () => {

@@ -138,6 +138,8 @@ function ClientDashboard() {
       return;
     }
 
+    console.log('🔄 CLIENT VIEW - Fetching data for access code:', accessCode);
+
     await withLoading(async () => {
       // Fetch current client by access code
       const { data: clientData, error: clientError } = await supabase
@@ -147,6 +149,7 @@ function ClientDashboard() {
         .single();
 
       if (clientError) {
+        console.error('❌ CLIENT VIEW - Fetch error:', clientError);
         const appError = handleError(clientError, {
           component: 'ClientDashboard',
           action: 'fetchClientData',
@@ -156,8 +159,19 @@ function ClientDashboard() {
       }
 
       if (!clientData) {
+        console.error('❌ CLIENT VIEW - No client data found for code:', accessCode);
         throw new Error('Client not found. Please check your access code.');
       }
+
+      console.log('📥 CLIENT VIEW - Fetched raw database data:');
+      console.log('  - Client ID:', clientData.id);
+      console.log('  - Client name:', clientData.name);
+      console.log('  - Access code:', clientData.access_code);
+      console.log('  - on_time_completed:', clientData.on_time_completed);
+      console.log('  - on_time_total:', clientData.on_time_total);
+      console.log('  - quality_scores:', clientData.quality_scores);
+      console.log('  - completed_sprints:', clientData.completed_sprints);
+      console.log('  - rank:', clientData.rank);
 
       // Fetch all clients for leaderboard
       const { data: allClientsData, error: allClientsError } = await supabase
@@ -180,7 +194,15 @@ function ClientDashboard() {
       try {
         transformedClient = transformSupabaseToClient(clientData);
         transformedAllClients = allClientsData.map(transformSupabaseToClient);
+        
+        console.log('🔄 CLIENT VIEW - Data transformed to Client interface:');
+        console.log('  - Client name:', transformedClient.name);
+        console.log('  - onTimeDelivery.completed:', transformedClient.onTimeDelivery.completed);
+        console.log('  - onTimeDelivery.total:', transformedClient.onTimeDelivery.total);
+        console.log('  - qualityScores:', transformedClient.qualityScores);
+        console.log('  - completedSprints:', transformedClient.completedSprints);
       } catch (transformError) {
+        console.error('❌ CLIENT VIEW - Transformation error:', transformError);
         const appError = handleError(transformError, {
           component: 'ClientDashboard',
           action: 'transformData'
@@ -222,7 +244,21 @@ function ClientDashboard() {
       return;
     }
 
+    // Initial fetch
     fetchClientData();
+    
+    // Auto-refresh every 30 seconds
+    console.log('⏰ Setting up auto-refresh (every 30 seconds)');
+    const refreshInterval = setInterval(() => {
+      console.log('⏰ Auto-refresh triggered');
+      fetchClientData();
+    }, 30000); // 30 seconds
+    
+    // Cleanup interval on unmount
+    return () => {
+      console.log('🛑 Clearing auto-refresh interval');
+      clearInterval(refreshInterval);
+    };
   }, [accessCode, router, fetchClientData]);
 
   const calculateOnTimePercentage = (completed: number, total: number): number => {
@@ -290,6 +326,16 @@ function ClientDashboard() {
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <h1 className="text-white font-heading text-2xl">Fast Track Leaderboard</h1>
           <div className="flex items-center gap-4">
+            <button 
+              onClick={() => {
+                console.log('🔄 Manual refresh triggered by user');
+                fetchClientData();
+              }} 
+              className="bg-[#1DB954] text-white px-6 py-2 rounded font-heading hover:bg-[#1aa845] transition"
+              title="Refresh data"
+            >
+              🔄 REFRESH
+            </button>
             <button 
               onClick={() => router.push('/')} 
               className="bg-white text-black px-6 py-2 rounded font-heading hover:bg-gray-200 transition"

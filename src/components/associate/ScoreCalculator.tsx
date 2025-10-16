@@ -199,16 +199,43 @@ export default function ScoreCalculator({ clients, onScoreUpdate }: ScoreCalcula
       }
 
       // 6. Update database
+      console.log('💾 Updating database with:', updateData);
       const { error: updateError } = await supabase
         .from('teams')
         .update(updateData)
         .eq('id', clientId);
 
       if (updateError) {
+        console.error('❌ Database update error:', updateError);
         throw new Error('Failed to update client scores');
       }
 
-      // 6. Recalculate all ranks
+      console.log('✅ Database UPDATE completed successfully');
+      console.log('  - on_time_completed:', newOnTimeCompleted);
+      console.log('  - on_time_total:', newOnTimeTotal);
+      console.log('  - quality_scores:', newQualityScores);
+      console.log('  - completed_sprints:', newCompletedSprints);
+
+      // VERIFICATION - Fetch the client again to confirm update
+      const { data: verifyClient, error: verifyError } = await supabase
+        .from('teams')
+        .select('id, name, access_code, on_time_completed, on_time_total, quality_scores, completed_sprints')
+        .eq('id', clientId)
+        .single();
+
+      if (verifyError) {
+        console.error('❌ Verification query failed:', verifyError);
+      } else {
+        console.log('🔍 VERIFICATION - Client data after update:');
+        console.log('  - Client name:', verifyClient?.name);
+        console.log('  - Client access_code:', verifyClient?.access_code);
+        console.log('  - on_time_completed:', verifyClient?.on_time_completed);
+        console.log('  - on_time_total:', verifyClient?.on_time_total);
+        console.log('  - quality_scores:', verifyClient?.quality_scores);
+        console.log('  - completed_sprints:', verifyClient?.completed_sprints);
+      }
+
+      // 7. Recalculate all ranks
       await recalculateAllRanks();
 
       return true;
