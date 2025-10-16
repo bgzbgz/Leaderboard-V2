@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Client, ClientStatus } from '@/types';
+import { Client } from '@/types';
 
 // Using Client type from @/types
 

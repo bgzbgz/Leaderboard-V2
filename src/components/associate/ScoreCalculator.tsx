@@ -184,7 +184,7 @@ export default function ScoreCalculator({ clients, onScoreUpdate }: ScoreCalcula
 
       // 5. Check if client is graduating (completed sprint 30)
       const isGraduating = scoreUpdate.sprintNumber === 30;
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         on_time_completed: newOnTimeCompleted,
         on_time_total: newOnTimeTotal,
         quality_scores: newQualityScores,
@@ -445,11 +445,12 @@ export default function ScoreCalculator({ clients, onScoreUpdate }: ScoreCalcula
         setUseManualOnTime(false);
         setMessage(null);
       }, 3000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Score update failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Please try again.';
       setMessage({ 
         type: 'error', 
-        text: `❌ Failed to update scores: ${error?.message || 'Please try again.'}` 
+        text: `❌ Failed to update scores: ${errorMessage}` 
       });
     } finally {
       setIsSubmitting(false);
@@ -638,10 +639,11 @@ export default function ScoreCalculator({ clients, onScoreUpdate }: ScoreCalcula
               });
               await onScoreUpdate();
               setTimeout(() => setMessage(null), 5000);
-            } catch (error: any) {
+            } catch (error: unknown) {
+              const errorMessage = error instanceof Error ? error.message : 'Unknown error';
               setMessage({ 
                 type: 'error', 
-                text: `❌ Failed to recalculate ranks: ${error?.message}` 
+                text: `❌ Failed to recalculate ranks: ${errorMessage}` 
               });
             } finally {
               setIsSubmitting(false);

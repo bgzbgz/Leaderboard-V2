@@ -379,7 +379,6 @@ function ClientDashboard() {
                   client.onTimeDelivery.total
                 );
                 const qualityAverage = calculateQualityAverage(client.qualityScores);
-                const combinedScore = calculateCombinedScore(onTimePercentage, qualityAverage);
                 const rankChange = getRankChange(client.rank, client.previousRank);
                 
                 return (
