@@ -222,8 +222,8 @@ export default function ScoreCalculator({ onScoreUpdate }: ScoreCalculatorProps)
         .from('teams')
         .update(updateData)
         .eq('id', clientId)
-        .select()  // ← CRITICAL FIX: Return the updated row!
-        .single();
+        .select()  // Return the updated row
+        .maybeSingle();  // Tolerate 0 or 1 rows (more forgiving than .single())
 
       console.log('📤 SUPABASE UPDATE RESPONSE:', {
         data: updatedRow,
