@@ -239,7 +239,7 @@ export default function EnhancedClientManagementModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto bg-white">
+      <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto bg-white px-6">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-black">
             MANAGE CLIENT - {client.name.toUpperCase()}

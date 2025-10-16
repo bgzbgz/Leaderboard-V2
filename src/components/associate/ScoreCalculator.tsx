@@ -223,14 +223,19 @@ export default function ScoreCalculator({ clients, onScoreUpdate }: ScoreCalcula
    */
   const recalculateAllRanks = async () => {
     try {
+      console.log('🔧 Starting rank recalculation...');
+      
       // 1. Fetch all clients
       const { data: allClients, error: fetchError } = await supabase
         .from('teams')
         .select('*');
 
       if (fetchError || !allClients) {
+        console.error('❌ Failed to fetch clients for ranking:', fetchError);
         throw new Error('Failed to fetch all clients');
       }
+
+      console.log(`📊 Found ${allClients.length} clients to rank`);
 
       // 2. Calculate combined score for each
       const clientsWithScores = allClients.map(client => {
@@ -241,8 +246,11 @@ export default function ScoreCalculator({ clients, onScoreUpdate }: ScoreCalcula
         const qualityScore = calculateQualityAverage(client.quality_scores || []);
         const combinedScore = calculateCombinedScore(speedScore, qualityScore);
 
+        console.log(`  - ${client.name}: Speed ${speedScore}%, Quality ${qualityScore}%, Combined ${combinedScore.toFixed(2)}`);
+
         return {
           id: client.id,
+          name: client.name,
           combinedScore,
           previousRank: client.rank
         };
@@ -250,24 +258,36 @@ export default function ScoreCalculator({ clients, onScoreUpdate }: ScoreCalcula
 
       // 3. Sort by combined score (highest first)
       clientsWithScores.sort((a, b) => b.combinedScore - a.combinedScore);
+      
+      console.log('🏆 Ranking order (by combined score):');
+      clientsWithScores.forEach((client, index) => {
+        console.log(`  Rank ${index + 1}: ${client.name} (Score: ${client.combinedScore.toFixed(2)})`);
+      });
 
       // 4. Assign new ranks and update database
       for (let i = 0; i < clientsWithScores.length; i++) {
         const client = clientsWithScores[i];
         const newRank = i + 1;
 
-        await supabase
+        const { error: updateError } = await supabase
           .from('teams')
           .update({
             rank: newRank,
             previous_rank: client.previousRank
           })
           .eq('id', client.id);
+        
+        if (updateError) {
+          console.error(`❌ Failed to update rank for ${client.name}:`, updateError);
+        } else {
+          console.log(`✅ Updated ${client.name}: Rank ${newRank} (was ${client.previousRank || 'none'})`);
+        }
       }
 
+      console.log('✅ All ranks recalculated successfully!');
       return true;
     } catch (error) {
-      console.error('Error recalculating ranks:', error);
+      console.error('❌ Error recalculating ranks:', error);
       throw error;
     }
   };
@@ -318,7 +338,11 @@ export default function ScoreCalculator({ clients, onScoreUpdate }: ScoreCalcula
         isOnTime
       };
 
+      console.log('🎯 Starting score update for client:', selectedClientId);
+      
       await updateClientScores(selectedClientId, scoreUpdate);
+      
+      console.log('✅ Score update successful!');
       
       setMessage({ 
         type: 'success', 
@@ -326,18 +350,26 @@ export default function ScoreCalculator({ clients, onScoreUpdate }: ScoreCalcula
       });
 
       // Refresh parent component
+      console.log('🔄 Calling parent refresh...');
       await onScoreUpdate();
+      
+      console.log('✅ Parent refreshed, keeping form visible for 3 seconds...');
 
-      // Reset form
-      setSprintNumber(1);
-      setQualityScore(50);
-      setDeadline('');
-      setSubmissionDate('');
-      setUseManualOnTime(false);
-    } catch (error) {
+      // Reset form after 3 seconds (so user can see the success message)
+      setTimeout(() => {
+        console.log('🔄 Resetting form...');
+        setSprintNumber(1);
+        setQualityScore(50);
+        setDeadline('');
+        setSubmissionDate('');
+        setUseManualOnTime(false);
+        setMessage(null);
+      }, 3000);
+    } catch (error: any) {
+      console.error('❌ Score update failed:', error);
       setMessage({ 
         type: 'error', 
-        text: `❌ Failed to update scores. Please try again.` 
+        text: `❌ Failed to update scores: ${error?.message || 'Please try again.'}` 
       });
     } finally {
       setIsSubmitting(false);
@@ -503,13 +535,47 @@ export default function ScoreCalculator({ clients, onScoreUpdate }: ScoreCalcula
       <button 
         onClick={handleSubmit}
         disabled={isSubmitting || !selectedClient}
-        className={`w-full py-3 rounded-lg font-bold font-heading ${
+        className={`w-full py-3 rounded-lg font-bold font-heading mb-3 ${
           isSubmitting || !selectedClient
             ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
             : 'bg-[#E50914] text-white hover:bg-[#c50812]'
         }`}
       >
         {isSubmitting ? 'UPDATING...' : 'UPDATE SCORES & RECALCULATE RANKS'}
+      </button>
+
+      {/* Fix All Ranks Button (for Bug #2 - Multiple Rank #1) */}
+      <button 
+        onClick={async () => {
+          if (confirm('This will recalculate ALL client ranks based on current scores. Continue?')) {
+            setIsSubmitting(true);
+            try {
+              console.log('🔧 Manual rank recalculation triggered...');
+              await recalculateAllRanks();
+              setMessage({ 
+                type: 'success', 
+                text: '✅ All ranks recalculated successfully! Check the leaderboard.' 
+              });
+              await onScoreUpdate();
+              setTimeout(() => setMessage(null), 5000);
+            } catch (error: any) {
+              setMessage({ 
+                type: 'error', 
+                text: `❌ Failed to recalculate ranks: ${error?.message}` 
+              });
+            } finally {
+              setIsSubmitting(false);
+            }
+          }
+        }}
+        disabled={isSubmitting}
+        className={`w-full py-2 rounded-lg font-bold font-heading text-sm ${
+          isSubmitting
+            ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
+            : 'bg-[#999999] text-white hover:bg-gray-700'
+        }`}
+      >
+        🔧 FIX ALL RANKS NOW (Manual Recalculation)
       </button>
     </div>
   );
