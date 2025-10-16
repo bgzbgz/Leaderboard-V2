@@ -20,6 +20,7 @@ import { LoadingPage } from '@/components/ui/loading';
 import { formatDisplayDate } from '@/utils/dateUtils';
 import { ErrorDisplay } from '@/components/ui/error-display';
 import EnhancedClientManagementModal from '@/components/associate/EnhancedClientManagementModal';
+import ScoreCalculator from '@/components/associate/ScoreCalculator';
 
 // Helper function to get full country name
 function getCountryName(countryCode: string): string {
@@ -33,12 +34,12 @@ function getCountryName(countryCode: string): string {
 // Helper function to get status color
 function getStatusColor(status: string): string {
   switch (status) {
-    case 'ON_TIME': return 'bg-green-500';
-    case 'DELAYED': return 'bg-red-500';
+    case 'ON_TIME': return 'bg-[#1DB954]';
+    case 'DELAYED': return 'bg-[#E50914]';
     case 'PROGRESS_MEETING':
     case 'GRADUATED':
     case 'STARTING_SOON':
-    default: return 'bg-gray-400';
+    default: return 'bg-[#999999]';
   }
 }
 
@@ -563,6 +564,14 @@ function AssociateDashboard() {
           </Button>
         </div>
 
+        {/* SECTION 3.5: Score Calculator */}
+        <div className="mb-12">
+          <ScoreCalculator 
+            clients={clients} 
+            onScoreUpdate={fetchAssociateData}
+          />
+        </div>
+
         {/* SECTION 4: Client Cards Grid */}
         <div className="mb-12">
           <h3 className="text-3xl font-bold mb-6 font-heading">Your Clients</h3>
@@ -624,15 +633,15 @@ function AssociateDashboard() {
             </div>
             <div className="bg-white text-black p-6 rounded-lg">
               <div className="text-xs uppercase tracking-wide mb-2 font-body">On Time</div>
-              <div className="text-6xl font-bold text-green-500 font-heading">{analytics.onTimeClients}</div>
+              <div className="text-6xl font-bold text-[#1DB954] font-heading">{analytics.onTimeClients}</div>
             </div>
             <div className="bg-white text-black p-6 rounded-lg">
               <div className="text-xs uppercase tracking-wide mb-2 font-body">In Delay</div>
-              <div className="text-6xl font-bold text-red-500 font-heading">{analytics.delayedClients}</div>
+              <div className="text-6xl font-bold text-[#E50914] font-heading">{analytics.delayedClients}</div>
             </div>
             <div className="bg-white text-black p-6 rounded-lg">
               <div className="text-xs uppercase tracking-wide mb-2 font-body">Graduated</div>
-              <div className="text-6xl font-bold text-blue-500 font-heading">{analytics.graduatedClients}</div>
+              <div className="text-6xl font-bold text-[#999999] font-heading">{analytics.graduatedClients}</div>
             </div>
             <div className="bg-white text-black p-6 rounded-lg">
               <div className="text-xs uppercase tracking-wide mb-2 font-body">Avg Quality</div>
@@ -668,7 +677,7 @@ function AssociateDashboard() {
                     return (
                       <tr key={client.id} className="border-b border-gray-700 hover:bg-gray-800">
                         <td className="py-4 px-2">
-                          <div className="text-2xl font-bold font-heading">{client.rank}</div>
+                          <div className="text-[96px] leading-none font-bold font-heading">{client.rank}</div>
                         </td>
                         <td className="py-4 px-2">
                           <div className="font-medium font-heading">{client.name}</div>
@@ -679,10 +688,10 @@ function AssociateDashboard() {
                           </div>
                         </td>
                         <td className="py-4 px-2">
-                          <div className="text-2xl font-bold font-heading">{onTimePercentage}%</div>
+                          <div className="text-[72px] leading-none font-bold font-heading">{onTimePercentage}%</div>
                         </td>
                         <td className="py-4 px-2">
-                          <div className="text-2xl font-bold font-heading">{qualityAverage}%</div>
+                          <div className="text-[72px] leading-none font-bold font-heading">{qualityAverage}%</div>
                         </td>
                         <td className="py-4 px-2">
                           <span className={`px-3 py-1 rounded text-sm font-bold font-body ${getStatusColor(client.status)}`}>
@@ -908,7 +917,7 @@ function AssociateDashboard() {
               <Button className="flex-1 bg-black text-white hover:bg-gray-800 font-heading">
                 UPDATE SCORES
               </Button>
-              <Button className="flex-1 bg-blue-500 text-white hover:bg-blue-600 font-heading">
+              <Button className="flex-1 bg-[#999999] text-white hover:bg-gray-700 font-heading">
                 VIEW DETAILS
               </Button>
             </div>

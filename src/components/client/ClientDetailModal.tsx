@@ -71,9 +71,9 @@ export default function ClientDetailModal({ client, isOpen, onClose }: ClientDet
   const getSprintStatusStyles = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'bg-green-500 text-white';
+        return 'bg-[#1DB954] text-white';
       case 'current':
-        return 'bg-amber-500 text-black border-2 border-black font-bold';
+        return 'bg-white text-black border-2 border-[#E50914] font-bold';
       case 'not-started':
         return 'bg-gray-200 text-gray-500';
       default:

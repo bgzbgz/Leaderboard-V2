@@ -133,14 +133,26 @@ export function formatDate(dateString: string): string {
 }
 
 /**
- * Calculate the rank change indicator
+ * Calculate the rank change indicator with arrows
  * @param currentRank - Current rank
  * @param previousRank - Previous rank (optional)
- * @returns Rank change indicator: 'up', 'down', 'same', or 'new'
+ * @returns Rank change arrow: '↑', '↓', '→', or null
  */
-export function getRankChange(currentRank: number, previousRank?: number): 'up' | 'down' | 'same' | 'new' {
-  if (!previousRank) return 'new';
-  if (currentRank < previousRank) return 'up';
-  if (currentRank > previousRank) return 'down';
-  return 'same';
+export function getRankChange(currentRank: number, previousRank?: number): '↑' | '↓' | '→' | null {
+  if (!previousRank) return null;
+  if (currentRank < previousRank) return '↑'; // Lower number = better rank
+  if (currentRank > previousRank) return '↓';
+  return '→';
 }
+
+/**
+ * Calculate combined ranking score
+ * Formula: (Speed Score × 0.6) + (Quality Score × 0.4)
+ * @param speedScore - Speed/on-time delivery score (0-100)
+ * @param qualityScore - Quality average score (0-100)
+ * @returns Combined score
+ */
+export function calculateCombinedScore(speedScore: number, qualityScore: number): number {
+  return (speedScore * 0.6) + (qualityScore * 0.4);
+}
+

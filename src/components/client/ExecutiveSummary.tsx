@@ -6,52 +6,67 @@ interface ExecutiveSummaryProps {
 }
 
 export default function ExecutiveSummary({ client }: ExecutiveSummaryProps) {
-  // Calculate on-time percentage
+  // Calculate metrics
   const onTimePercentage = client.onTimeDelivery.total > 0 
     ? Math.round((client.onTimeDelivery.completed / client.onTimeDelivery.total) * 100)
     : 0;
 
-  // Calculate quality average
   const qualityAverage = client.qualityScores.length > 0
     ? Math.round(client.qualityScores.reduce((sum, score) => sum + score, 0) / client.qualityScores.length)
     : 0;
 
-  // Calculate days ahead/behind for current sprint
+  // Calculate quality trend
+  const getQualityTrend = () => {
+    if (client.qualityScores.length < 6) return null;
+    
+    const last3 = client.qualityScores.slice(-3);
+    const previous3 = client.qualityScores.slice(-6, -3);
+    
+    const last3Avg = last3.reduce((a, b) => a + b, 0) / 3;
+    const previous3Avg = previous3.reduce((a, b) => a + b, 0) / 3;
+    
+    const difference = last3Avg - previous3Avg;
+    
+    if (difference > 5) return '↑ improving';
+    if (difference < -5) return '↓ declining';
+    return null;
+  };
+
+  const qualityTrend = getQualityTrend();
+
+  // Calculate days ahead/behind
   const currentDeadline = new Date(client.sprintDeadline);
   const today = new Date();
   const daysDifference = differenceInDays(currentDeadline, today);
   
-  // Determine status colors
+  // Color functions
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'ON_TIME':
-        return 'bg-green-500';
+        return '#1DB954'; // Green
       case 'DELAYED':
-        return 'bg-red-500';
-      case 'PROGRESS_MEETING':
-      case 'GRADUATED':
-      case 'STARTING_SOON':
+        return '#E50914'; // Red
       default:
-        return 'bg-gray-400';
+        return '#999999'; // Gray
     }
   };
 
   const getOnTimeColor = (percentage: number) => {
-    if (percentage >= 80) return 'text-green-500';
-    if (percentage >= 60) return 'text-amber-500';
-    return 'text-red-500';
+    if (percentage >= 80) return '#1DB954';
+    if (percentage >= 60) return '#FF9500';
+    return '#E50914';
   };
 
   const getQualityColor = (percentage: number) => {
-    if (percentage >= 80) return 'text-green-500';
-    if (percentage >= 65) return 'text-amber-500';
-    return 'text-red-500';
+    if (percentage >= 80) return '#1DB954';
+    if (percentage >= 65) return '#FF9500';
+    return '#E50914';
   };
 
   const getSprintStatusColor = (days: number) => {
-    if (days > 0) return 'text-green-500';
-    if (days === 0) return 'text-white';
-    return 'text-red-500';
+    if (days > 0) return '#1DB954';
+    if (days === 0) return '#FFFFFF';
+    return '#E50914';
   };
 
   const getSprintStatusText = (days: number) => {
@@ -61,84 +76,195 @@ export default function ExecutiveSummary({ client }: ExecutiveSummaryProps) {
   };
 
   return (
-    <div className="bg-black text-white w-full">
-      {/* Header Section */}
-      <div className="border-b border-white">
-        <div className="px-6 py-4">
-          <h1 className="text-2xl font-bold font-heading">
-            {client.name} — WEEK {client.weekNumber} OF 30
-          </h1>
+    <div style={{
+      background: '#0B0B0B',
+      borderLeft: '2px solid #E50914',
+      padding: '32px',
+      marginBottom: '48px',
+      maxWidth: '1200px',
+      marginLeft: 'auto',
+      marginRight: 'auto'
+    }}>
+      {/* Header */}
+      <div style={{
+        fontWeight: 700,
+        fontSize: '24px',
+        color: '#FFFFFF',
+        textTransform: 'uppercase',
+        letterSpacing: '1px',
+        marginBottom: '24px',
+        borderBottom: '1px solid #212427',
+        paddingBottom: '16px'
+      }}
+      className="font-heading">
+        {client.name} — WEEK {client.weekNumber} OF 30
+      </div>
+
+      {/* Status and Rank Row */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '32px',
+        marginBottom: '32px',
+        paddingBottom: '24px',
+        borderBottom: '1px solid #212427'
+      }}>
+        <div>
+          <div style={{
+            fontWeight: 700,
+            fontSize: '14px',
+            color: '#FFFFFF',
+            textTransform: 'uppercase',
+            marginBottom: '8px'
+          }}
+          className="font-heading">
+            YOUR STATUS
+          </div>
+          <div style={{
+            fontSize: '32px',
+            fontWeight: 700,
+            color: getStatusColor(client.status)
+          }}
+          className="font-heading">
+            {client.status.replace('_', ' ')}
+          </div>
+        </div>
+
+        <div>
+          <div style={{
+            fontWeight: 700,
+            fontSize: '14px',
+            color: '#FFFFFF',
+            textTransform: 'uppercase',
+            marginBottom: '8px'
+          }}
+          className="font-heading">
+            LEADERBOARD RANK
+          </div>
+          <div style={{
+            fontSize: '32px',
+            fontWeight: 700,
+            color: '#FFFFFF'
+          }}
+          className="font-heading">
+            {client.rank} of {client.totalClients}
+          </div>
         </div>
       </div>
 
-      {/* Status and Rank Section */}
-      <div className="border-b border-white">
-        <div className="px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <span className="text-sm uppercase tracking-wide font-body">YOUR STATUS:</span>
-            <span className={`px-3 py-1 rounded text-base font-bold text-white ${getStatusColor(client.status)}`}>
-              {client.status.replace('_', ' ')}
-            </span>
+      {/* Metrics Row */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '32px',
+        marginBottom: '32px'
+      }}>
+        {/* On-Time Delivery */}
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            fontWeight: 700,
+            fontSize: '14px',
+            color: '#FFFFFF',
+            textTransform: 'uppercase',
+            marginBottom: '12px'
+          }}
+          className="font-heading">
+            ON-TIME DELIVERY
           </div>
-          <div className="text-sm">
-            <span className="uppercase tracking-wide font-body">LEADERBOARD RANK:</span>
-            <span className="ml-2 font-bold font-heading">{client.rank} of {client.totalClients}</span>
+          <div style={{
+            fontSize: '48px',
+            fontWeight: 700,
+            color: '#FFFFFF',
+            marginBottom: '8px'
+          }}
+          className="font-heading">
+            {client.onTimeDelivery.completed} of {client.onTimeDelivery.total}
+          </div>
+          <div style={{
+            fontSize: '14px',
+            color: getOnTimeColor(onTimePercentage)
+          }}
+          className="font-body">
+            ({onTimePercentage}% hit rate)
           </div>
         </div>
-      </div>
 
-      {/* Metrics Section */}
-      <div className="border-b border-white">
-        <div className="px-6 py-6">
-          <div className="grid grid-cols-2 gap-12">
-            {/* On-Time Delivery */}
-            <div>
-              <div className="text-xs uppercase tracking-wide mb-2 font-body">ON-TIME DELIVERY</div>
-              <div className="text-5xl font-bold mb-1 font-heading">
-                {client.onTimeDelivery.completed} of {client.onTimeDelivery.total}
-              </div>
-              <div className={`text-sm font-body ${getOnTimeColor(onTimePercentage)}`}>
-                ({onTimePercentage}% hit rate)
-              </div>
-            </div>
-
-            {/* Quality Integration */}
-            <div>
-              <div className="text-xs uppercase tracking-wide mb-2 font-body">QUALITY INTEGRATION</div>
-              <div className={`text-5xl font-bold mb-1 font-heading ${getQualityColor(qualityAverage)}`}>
-                {qualityAverage}%
-              </div>
-              <div className="text-sm text-gray-300 font-body">
-                (Target: 80%)
-              </div>
-            </div>
+        {/* Quality Integration */}
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            fontWeight: 700,
+            fontSize: '14px',
+            color: '#FFFFFF',
+            textTransform: 'uppercase',
+            marginBottom: '12px'
+          }}
+          className="font-heading">
+            QUALITY INTEGRATION
           </div>
+          <div style={{
+            fontSize: '48px',
+            fontWeight: 700,
+            color: '#FFFFFF',
+            marginBottom: '8px'
+          }}
+          className="font-heading">
+            {qualityAverage}%
+          </div>
+          <div style={{
+            fontSize: '14px',
+            color: getQualityColor(qualityAverage)
+          }}
+          className="font-body">
+            (Target: 80%)
+          </div>
+          {qualityTrend && (
+            <div style={{
+              fontSize: '14px',
+              color: '#FFFFFF',
+              marginTop: '8px'
+            }}
+            className="font-body">
+              {qualityTrend}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Current Sprint Section */}
-      <div className="border-b border-white">
-        <div className="px-6 py-4">
-          <div className="text-sm uppercase tracking-wide mb-2 font-body">CURRENT SPRINT:</div>
-          <div className="text-sm mb-1 font-heading">
-            Sprint {client.currentSprint.number} — {client.currentSprint.name}
-          </div>
-          <div className="text-sm mb-1 font-body">
-            DUE: {format(currentDeadline, 'EEEE MMM d, yyyy')}
-          </div>
-          <div className={`text-sm font-medium font-body ${getSprintStatusColor(daysDifference)}`}>
-            STATUS: {getSprintStatusText(daysDifference)}
-          </div>
+      <div style={{
+        borderTop: '1px solid #212427',
+        paddingTop: '24px'
+      }}
+      className="font-body">
+        <div style={{
+          fontSize: '16px',
+          fontWeight: 500,
+          color: '#FFFFFF',
+          marginBottom: '8px'
+        }}>
+          CURRENT SPRINT: Sprint {client.currentSprint.number} — {client.currentSprint.name}
         </div>
-      </div>
-
-      {/* Next Sprint Section */}
-      <div>
-        <div className="px-6 py-4">
-          <div className="text-sm uppercase tracking-wide mb-2 font-body">NEXT SPRINT:</div>
-          <div className="text-sm font-heading">
-            Sprint {client.nextSprint.number} — {client.nextSprint.name} (releases {format(new Date(client.nextSprintRelease), 'MMM d')})
-          </div>
+        <div style={{
+          fontSize: '14px',
+          color: '#FFFFFF',
+          marginBottom: '4px'
+        }}>
+          DUE: {format(currentDeadline, 'EEEE MMM d, yyyy')}
+        </div>
+        <div style={{
+          fontSize: '14px',
+          color: getSprintStatusColor(daysDifference),
+          marginBottom: '16px'
+        }}>
+          STATUS: {getSprintStatusText(daysDifference)}
+        </div>
+        <div style={{
+          fontSize: '14px',
+          color: '#FFFFFF',
+          paddingTop: '16px',
+          borderTop: '1px solid #212427'
+        }}>
+          NEXT SPRINT: Sprint {client.nextSprint.number} — {client.nextSprint.name} (releases {format(new Date(client.nextSprintRelease), 'MMM d')})
         </div>
       </div>
     </div>

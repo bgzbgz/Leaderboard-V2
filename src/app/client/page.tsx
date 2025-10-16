@@ -13,6 +13,7 @@ import { useLoading } from '@/hooks/useLoading';
 import { useStableCallback } from '@/hooks/usePerformance';
 import { LoadingPage } from '@/components/ui/loading';
 import { ErrorDisplay } from '@/components/ui/error-display';
+import { getRankChange, calculateCombinedScore } from '@/utils/calculations';
 
 // Helper function to get full country name
 function getCountryName(countryCode: string): string {
@@ -35,14 +36,14 @@ function getCountryName(countryCode: string): string {
 function getStatusColor(status: string): string {
   switch (status) {
     case 'ON_TIME':
-      return 'bg-green-500';
+      return 'bg-[#1DB954]';
     case 'DELAYED':
-      return 'bg-red-500';
+      return 'bg-[#E50914]';
     case 'PROGRESS_MEETING':
     case 'GRADUATED':
     case 'STARTING_SOON':
     default:
-      return 'bg-gray-400';
+      return 'bg-[#999999]';
   }
 }
 
@@ -332,19 +333,32 @@ function ClientDashboard() {
                   client.onTimeDelivery.total
                 );
                 const qualityAverage = calculateQualityAverage(client.qualityScores);
+                const combinedScore = calculateCombinedScore(onTimePercentage, qualityAverage);
+                const rankChange = getRankChange(client.rank, client.previousRank);
                 
                 return (
                   <tr
                     key={client.id}
                     className={`${
                       isCurrentClient
-                        ? 'bg-black border-l-4 border-white text-white font-bold'
+                        ? 'bg-black border-l-4 border-[#E50914] text-white font-bold'
                         : 'bg-gray-800 text-gray-200 border-l-4 border-transparent'
                     } hover:bg-gray-700 transition-colors`}
                   >
                     <td className="py-4 px-2">
-                      <div className="text-6xl font-bold font-heading">
-                        {client.rank}
+                      <div className="flex items-center gap-2">
+                        <span className="text-[96px] leading-none font-bold font-heading">
+                          {client.rank}
+                        </span>
+                        {rankChange && (
+                          <span className={`text-3xl ${
+                            rankChange === '↑' ? 'text-[#1DB954]' :
+                            rankChange === '↓' ? 'text-[#E50914]' :
+                            'text-[#999999]'
+                          }`}>
+                            {rankChange}
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="py-4 px-2">
@@ -364,12 +378,12 @@ function ClientDashboard() {
                       </div>
                     </td>
                     <td className="py-4 px-2">
-                      <div className="text-6xl font-bold font-heading">
+                      <div className="text-[72px] leading-none font-bold font-heading">
                         {onTimePercentage}%
                       </div>
                     </td>
                     <td className="py-4 px-2">
-                      <div className="text-6xl font-bold font-heading">
+                      <div className="text-[72px] leading-none font-bold font-heading">
                         {qualityAverage}%
                       </div>
                     </td>
@@ -397,7 +411,7 @@ function ClientDashboard() {
           </table>
         </div>
 
-        {/* Mobile Cards */}
+        {/* Mobile Cards - 3 Column Layout */}
         <div className="md:hidden space-y-4">
           {allClients.map((client) => {
             const isCurrentClient = client.id === currentClient.id;
@@ -406,60 +420,43 @@ function ClientDashboard() {
               client.onTimeDelivery.total
             );
             const qualityAverage = calculateQualityAverage(client.qualityScores);
+            const combinedScore = calculateCombinedScore(onTimePercentage, qualityAverage);
             
             return (
               <div
                 key={client.id}
                 className={`${
                   isCurrentClient
-                    ? 'bg-black border-l-4 border-white text-white font-bold'
+                    ? 'bg-black border-l-4 border-[#E50914] text-white'
                     : 'bg-gray-800 text-gray-200 border-l-4 border-transparent'
                 } p-4 rounded-lg`}
               >
-                <div className="flex justify-between items-start mb-3">
-                  <div className="text-4xl font-bold font-heading">#{client.rank}</div>
-                  <div className="text-sm font-body text-right">{getCountryName(client.countryCode)}</div>
-                </div>
-                
-                <div className="mb-3">
-                  <div className="font-medium text-lg font-heading">{client.name}</div>
-                  <div className="text-sm text-gray-400 font-body">
-                    Sprint {client.currentSprint.number} - {client.currentSprint.name}
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4 mb-3">
+                {/* Rank and Team Name */}
+                <div className="flex items-start justify-between mb-3">
                   <div>
-                    <div className="text-xs uppercase tracking-wide text-gray-400 font-body">On-Time %</div>
-                    <div className="text-3xl font-bold font-heading">{onTimePercentage}%</div>
+                    <div className="text-[48px] leading-none font-bold font-heading">{client.rank}</div>
+                    <div className="text-lg font-bold mt-1 font-heading">{client.name}</div>
                   </div>
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-gray-400 font-body">Quality %</div>
-                    <div className="text-3xl font-bold font-heading">{qualityAverage}%</div>
-                  </div>
-                </div>
-                
-                <div className="flex justify-between items-center mb-3">
                   <span className={`px-3 py-1 rounded text-sm font-bold font-body ${getStatusColor(client.status)}`}>
                     {client.status.replace('_', ' ')}
                   </span>
-                  {isCurrentClient && (
-                    <span className="text-red-500 font-bold text-sm font-heading">YOU</span>
-                  )}
                 </div>
                 
-                <div className="flex justify-center">
-                  {isCurrentClient ? (
-                    <button
-                      onClick={() => handleViewClient(client)}
-                      className="bg-white text-black px-4 py-2 rounded hover:bg-gray-200 transition-colors font-heading text-sm font-bold"
-                    >
-                      VIEW DETAILS
-                    </button>
-                  ) : (
-                    <span className="text-gray-400 text-sm font-body">—</span>
-                  )}
+                {/* Combined Score */}
+                <div className="text-center py-4 bg-gray-900 rounded mb-3">
+                  <div className="text-xs uppercase mb-1 font-body">Combined Score</div>
+                  <div className="text-[48px] leading-none font-bold font-heading">{combinedScore.toFixed(1)}</div>
                 </div>
+                
+                {/* View Details Button */}
+                {isCurrentClient && (
+                  <button 
+                    onClick={() => handleViewClient(client)}
+                    className="w-full py-2 bg-white text-black rounded font-bold font-heading"
+                  >
+                    VIEW DETAILS
+                  </button>
+                )}
               </div>
             );
           })}

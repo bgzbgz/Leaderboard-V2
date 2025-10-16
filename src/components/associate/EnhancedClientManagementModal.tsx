@@ -259,7 +259,7 @@ export default function EnhancedClientManagementModal({
               onClick={() => setActiveTab(tab.id as 'profile' | 'sprints' | 'ssdb' | 'notes')}
               className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
                 activeTab === tab.id
-                  ? 'border-yellow-500 text-yellow-600'
+                  ? 'border-[#E50914] text-[#E50914]'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
@@ -588,7 +588,7 @@ export default function EnhancedClientManagementModal({
                       <div className="flex justify-between items-start mb-2">
                         <span className={`px-2 py-1 rounded text-xs font-medium ${
                           insight.priority === 'High' ? 'bg-red-100 text-red-800' :
-                          insight.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                          insight.priority === 'Medium' ? 'bg-gray-200 text-gray-800' :
                           'bg-green-100 text-green-800'
                         }`}>
                           {insight.priority}
