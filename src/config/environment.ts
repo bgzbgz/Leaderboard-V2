@@ -6,7 +6,8 @@
 export const config = {
   // Supabase Configuration
   supabase: {
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://mfddgywmqdkunzafshpc.supabase.co',
+    // Accept both NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_DATABASE_URL (Netlify extension uses DATABASE_URL)
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_DATABASE_URL || 'https://mfddgywmqdkunzafshpc.supabase.co',
     anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mZGRneXdtcWRrdW56YWZzaHBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxNjY4ODgsImV4cCI6MjA3NTc0Mjg4OH0.HoU9cdZP6PCv1pgbDEEI1mqBlhIUXBgZyMBfrCVDT1w'
   },
 
