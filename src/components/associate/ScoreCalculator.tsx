@@ -199,22 +199,75 @@ export default function ScoreCalculator({ clients, onScoreUpdate }: ScoreCalcula
       }
 
       // 6. Update database
-      console.log('💾 Updating database with:', updateData);
-      const { error: updateError } = await supabase
+      console.log('🎯 PRE-UPDATE DEBUG:');
+      console.log('  - Client ID:', clientId);
+      console.log('  - Current DB values:', {
+        on_time_completed: client.on_time_completed,
+        on_time_total: client.on_time_total,
+        quality_scores: client.quality_scores,
+        completed_sprints: client.completed_sprints
+      });
+      console.log('  - New calculated values:', {
+        on_time_completed: newOnTimeCompleted,
+        on_time_total: newOnTimeTotal,
+        quality_scores: newQualityScores,
+        completed_sprints: newCompletedSprints
+      });
+      console.log('💾 Sending UPDATE with payload:', updateData);
+      
+      const { data: updatedRow, error: updateError } = await supabase
         .from('teams')
         .update(updateData)
-        .eq('id', clientId);
+        .eq('id', clientId)
+        .select()  // ← CRITICAL FIX: Return the updated row!
+        .single();
+
+      console.log('📤 SUPABASE UPDATE RESPONSE:', {
+        data: updatedRow,
+        error: updateError
+      });
 
       if (updateError) {
         console.error('❌ Database update error:', updateError);
-        throw new Error('Failed to update client scores');
+        console.error('  - Error code:', updateError.code);
+        console.error('  - Error message:', updateError.message);
+        console.error('  - Error details:', updateError.details);
+        console.error('  - Error hint:', updateError.hint);
+        throw new Error(`Failed to update client scores: ${updateError.message}`);
+      }
+
+      if (!updatedRow) {
+        console.error('❌ UPDATE returned no data! This means the row was not updated.');
+        console.error('  - Possible causes:');
+        console.error('    1. RLS policy is still blocking the update');
+        console.error('    2. Client ID does not exist');
+        console.error('    3. WITH CHECK clause in RLS policy is rejecting the update');
+        throw new Error('UPDATE returned no data - row was not updated');
       }
 
       console.log('✅ Database UPDATE completed successfully');
-      console.log('  - on_time_completed:', newOnTimeCompleted);
-      console.log('  - on_time_total:', newOnTimeTotal);
-      console.log('  - quality_scores:', newQualityScores);
-      console.log('  - completed_sprints:', newCompletedSprints);
+      console.log('  - Row returned from UPDATE:', updatedRow);
+      console.log('  - on_time_completed:', updatedRow.on_time_completed);
+      console.log('  - on_time_total:', updatedRow.on_time_total);
+      console.log('  - quality_scores:', updatedRow.quality_scores);
+      console.log('  - completed_sprints:', updatedRow.completed_sprints);
+      
+      // Verify UPDATE actually wrote the expected values
+      const updateSuccess = 
+        updatedRow.on_time_completed === newOnTimeCompleted &&
+        updatedRow.on_time_total === newOnTimeTotal &&
+        JSON.stringify(updatedRow.quality_scores) === JSON.stringify(newQualityScores);
+      
+      console.log('🔍 UPDATE VERIFICATION:', updateSuccess ? '✅ SUCCESS' : '❌ MISMATCH');
+      if (!updateSuccess) {
+        console.error('❌ UPDATE MISMATCH DETECTED:');
+        console.error('  Expected:', { newOnTimeCompleted, newOnTimeTotal, newQualityScores });
+        console.error('  Got:', { 
+          on_time_completed: updatedRow.on_time_completed,
+          on_time_total: updatedRow.on_time_total,
+          quality_scores: updatedRow.quality_scores
+        });
+      }
 
       // VERIFICATION - Fetch the client again to confirm update
       const { data: verifyClient, error: verifyError } = await supabase
