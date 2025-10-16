@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Client } from '@/types';
 import { supabase } from '@/lib/supabase';
 
@@ -182,16 +182,26 @@ export default function ScoreCalculator({ clients, onScoreUpdate }: ScoreCalcula
       const currentCompletedSprints = client.completed_sprints || [];
       const newCompletedSprints = [...currentCompletedSprints, scoreUpdate.sprintNumber];
 
-      // 5. Update database
+      // 5. Check if client is graduating (completed sprint 30)
+      const isGraduating = scoreUpdate.sprintNumber === 30;
+      const updateData: any = {
+        on_time_completed: newOnTimeCompleted,
+        on_time_total: newOnTimeTotal,
+        quality_scores: newQualityScores,
+        completed_sprints: newCompletedSprints,
+        updated_at: new Date().toISOString()
+      };
+
+      // Set status to GRADUATED and graduation date if completing sprint 30
+      if (isGraduating) {
+        updateData.status = 'GRADUATED';
+        updateData.graduation_date = new Date().toISOString().split('T')[0];
+      }
+
+      // 6. Update database
       const { error: updateError } = await supabase
         .from('teams')
-        .update({
-          on_time_completed: newOnTimeCompleted,
-          on_time_total: newOnTimeTotal,
-          quality_scores: newQualityScores,
-          completed_sprints: newCompletedSprints,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', clientId);
 
       if (updateError) {
@@ -274,6 +284,15 @@ export default function ScoreCalculator({ clients, onScoreUpdate }: ScoreCalcula
 
     if (!sprintNumber || sprintNumber < 1 || sprintNumber > 30) {
       setMessage({ type: 'error', text: 'Sprint number must be between 1 and 30' });
+      return;
+    }
+
+    // Check for duplicate sprint entry
+    if (selectedClient && selectedClient.completedSprints.includes(sprintNumber)) {
+      setMessage({ 
+        type: 'error', 
+        text: `Sprint ${sprintNumber} has already been completed for ${selectedClient.name}. Please select a different sprint number.` 
+      });
       return;
     }
 
