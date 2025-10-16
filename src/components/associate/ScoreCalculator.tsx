@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { Client } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { useClients } from '@/context/ClientContext';
 
@@ -647,7 +646,9 @@ export default function ScoreCalculator({ onScoreUpdate }: ScoreCalculatorProps)
                 type: 'success', 
                 text: '✅ All ranks recalculated successfully! Check the leaderboard.' 
               });
-              await onScoreUpdate();
+              if (onScoreUpdate) {
+                await onScoreUpdate();
+              }
               setTimeout(() => setMessage(null), 5000);
             } catch (error: unknown) {
               const errorMessage = error instanceof Error ? error.message : 'Unknown error';
