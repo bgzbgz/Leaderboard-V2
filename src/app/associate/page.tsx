@@ -21,6 +21,7 @@ import { formatDisplayDate } from '@/utils/dateUtils';
 import { ErrorDisplay } from '@/components/ui/error-display';
 import EnhancedClientManagementModal from '@/components/associate/EnhancedClientManagementModal';
 import ScoreCalculator from '@/components/associate/ScoreCalculator';
+import { ClientProvider } from '@/context/ClientContext';
 
 // Helper function to get full country name
 function getCountryName(countryCode: string): string {
@@ -527,7 +528,8 @@ function AssociateDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <ClientProvider currentGuru={associate.name}>
+      <div className="min-h-screen bg-black text-white">
       {/* SECTION 1: Header */}
       <header className="fixed top-0 left-0 right-0 bg-black z-50 py-4 px-6">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
@@ -567,7 +569,6 @@ function AssociateDashboard() {
         {/* SECTION 3.5: Score Calculator */}
         <div className="mb-12">
           <ScoreCalculator 
-            clients={clients} 
             onScoreUpdate={fetchAssociateData}
           />
         </div>
@@ -1026,6 +1027,7 @@ function AssociateDashboard() {
         }}
       />
     </div>
+    </ClientProvider>
   );
 }
 

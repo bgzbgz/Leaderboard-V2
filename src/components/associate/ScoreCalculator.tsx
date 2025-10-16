@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { Client } from '@/types';
 import { supabase } from '@/lib/supabase';
+import { useClients } from '@/context/ClientContext';
 
 interface ScoreCalculatorProps {
-  clients: Client[];
-  onScoreUpdate: () => Promise<void>;
+  // No longer needs clients prop - uses context
+  onScoreUpdate?: () => Promise<void>;
 }
 
 interface ScoreUpdate {
@@ -89,7 +90,10 @@ const getQualityColor = (score: number): string => {
   return 'text-[#E50914]';
 };
 
-export default function ScoreCalculator({ clients, onScoreUpdate }: ScoreCalculatorProps) {
+export default function ScoreCalculator({ onScoreUpdate }: ScoreCalculatorProps) {
+  // Get clients from context instead of props
+  const { clients, refreshClients } = useClients();
+  
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [sprintNumber, setSprintNumber] = useState<number>(1);
   const [qualityScore, setQualityScore] = useState<number>(50);
@@ -429,11 +433,17 @@ export default function ScoreCalculator({ clients, onScoreUpdate }: ScoreCalcula
         text: `✅ Scores updated successfully! Rank recalculated. ${selectedClient?.name} is now predicted rank #${predictedRank}`
       });
 
-      // Refresh parent component
-      console.log('🔄 Calling parent refresh...');
-      await onScoreUpdate();
+      // Refresh clients from context (ensures fresh data in dropdown)
+      console.log('🔄 Refreshing clients from context...');
+      await refreshClients();
       
-      console.log('✅ Parent refreshed, keeping form visible for 3 seconds...');
+      // Also call parent refresh if provided (for backwards compatibility)
+      if (onScoreUpdate) {
+        console.log('🔄 Calling parent refresh...');
+        await onScoreUpdate();
+      }
+      
+      console.log('✅ All data refreshed, keeping form visible for 3 seconds...');
 
       // Reset form after 3 seconds (so user can see the success message)
       setTimeout(() => {
