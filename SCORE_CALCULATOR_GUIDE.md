@@ -301,3 +301,4 @@ Before using the Score Calculator independently:
 **Last Updated:** October 16, 2025
 **Version:** 1.0
 
+

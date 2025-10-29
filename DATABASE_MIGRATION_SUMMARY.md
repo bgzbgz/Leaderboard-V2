@@ -101,3 +101,4 @@ The enhanced client management system is now fully operational with:
 
 **All associates can now use the enhanced management features through the "ENHANCED MANAGE" button in their dashboards.**
 
+

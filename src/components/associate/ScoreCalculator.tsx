@@ -384,82 +384,101 @@ export default function ScoreCalculator({ onScoreUpdate }: ScoreCalculatorProps)
       setMessage({ type: 'error', text: 'Please select a client' });
       return;
     }
-
+    
     if (!sprintNumber || sprintNumber < 1 || sprintNumber > 30) {
       setMessage({ type: 'error', text: 'Sprint number must be between 1 and 30' });
       return;
     }
-
-    // Check for duplicate sprint entry
-    if (selectedClient && selectedClient.completedSprints.includes(sprintNumber)) {
-      setMessage({ 
-        type: 'error', 
-        text: `Sprint ${sprintNumber} has already been completed for ${selectedClient.name}. Please select a different sprint number.` 
-      });
-      return;
-    }
-
+    
     if (!deadline) {
       setMessage({ type: 'error', text: 'Please select a deadline' });
       return;
     }
-
+    
     if (!submissionDate) {
       setMessage({ type: 'error', text: 'Please select a submission date' });
       return;
     }
-
-    setIsSubmitting(true);
-    setMessage(null);
-
-    try {
-      const scoreUpdate: ScoreUpdate = {
-        sprintNumber,
-        qualityScore,
-        submissionDate,
-        deadline,
-        isOnTime
-      };
-
-      console.log('🎯 Starting score update for client:', selectedClientId);
-      
-      await updateClientScores(selectedClientId, scoreUpdate);
-      
-      console.log('✅ Score update successful!');
-      
-      setMessage({ 
-        type: 'success', 
-        text: `✅ Scores updated successfully! Rank recalculated. ${selectedClient?.name} is now predicted rank #${predictedRank}`
-      });
-
-      // Refresh clients from context (ensures fresh data in dropdown)
-      console.log('🔄 Refreshing clients from context...');
-      await refreshClients();
-      
-      // Also call parent refresh if provided (for backwards compatibility)
-      if (onScoreUpdate) {
-        console.log('🔄 Calling parent refresh...');
-        await onScoreUpdate();
-      }
-      
-      console.log('✅ All data refreshed, keeping form visible for 3 seconds...');
-
-      // Reset form after 3 seconds (so user can see the success message)
-      setTimeout(() => {
-        console.log('🔄 Resetting form...');
-        setSprintNumber(1);
-        setQualityScore(50);
-        setDeadline('');
-        setSubmissionDate('');
-        setUseManualOnTime(false);
-        setMessage(null);
-      }, 3000);
-    } catch (error: unknown) {
-      console.error('❌ Score update failed:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Please try again.';
+  
+    const selectedClient = clients.find(c => c.id === selectedClientId);
+    
+    // Check for duplicate sprint
+    if (selectedClient && selectedClient.completedSprints.includes(sprintNumber)) {
       setMessage({ 
         type: 'error', 
-        text: `❌ Failed to update scores: ${errorMessage}` 
+        text: `Sprint ${sprintNumber} has already been completed for ${selectedClient.name}. Please choose a different sprint number.` 
+      });
+      return;
+    }
+  
+    try {
+      setIsSubmitting(true);
+      setMessage(null);
+      
+      console.log('Submitting score to n8n...', {
+        clientId: selectedClientId,
+        sprintNumber,
+        deadline,
+        submissionDate,
+        qualityScore,
+        isOnTime: manualOverride ? isOnTime : calculateIsOnTime(deadline, submissionDate)
+      });
+      
+      // Call n8n webhook
+      const response = await fetch('https://n8n-edge.fasttrack-diagnostic.com/webhook/52750a3f-5289-46c2-8e3f-cb8045f6f2fc', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          clientId: selectedClientId,
+          sprintNumber: sprintNumber,
+          deadline: deadline,
+          submissionDate: submissionDate,
+          qualityScore: qualityScore,
+          isOnTime: manualOverride ? isOnTime : calculateIsOnTime(deadline, submissionDate)
+        })
+      });
+  
+      console.log('n8n response status:', response.status);
+  
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('n8n error response:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+  
+      const result = await response.json();
+      console.log('n8n response data:', result);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update scores');
+      }
+  
+      setMessage({ 
+        type: 'success', 
+        text: 'Scores updated and ranks recalculated successfully!' 
+      });
+  
+      // Refresh the associate dashboard data
+      if (onScoreUpdate) {
+        await onScoreUpdate();
+      }
+  
+      // Reset form
+      setSelectedClientId('');
+      setSprintNumber(1);
+      setDeadline('');
+      setSubmissionDate('');
+      setQualityScore(85);
+      setIsOnTime(true);
+      setManualOverride(false);
+  
+    } catch (error: any) {
+      console.error('Error updating scores:', error);
+      setMessage({ 
+        type: 'error', 
+        text: error.message || 'Failed to update scores. Please try again.' 
       });
     } finally {
       setIsSubmitting(false);
